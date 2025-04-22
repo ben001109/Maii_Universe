@@ -2,13 +2,14 @@ import discord
 from discord.ext import commands
 import logging
 from config import TOKEN
-from utils.SlashCommandHandler import load_slash_command_modules
 from utils.Logging import setup_logging
+from utils.SlashCommandHandler import load_slash_command_modules
 from utils.Auth import print_admins
 from utils.CommandSync import full_sync
+from database import init_db
 
-# 設定 logging
 setup_logging()
+init_db()
 logger = logging.getLogger("MaiiBot")
 
 class MaiiBot(commands.Bot):

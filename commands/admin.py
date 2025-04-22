@@ -2,8 +2,14 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 import logging
-from database import inject_money, upgrade_all, reset_player, simulate_hourly_income
+from database import (
+    inject_money,
+    upgrade_all,
+    reset_player
+)
+from utils.Experience import simulate_hourly_income
 from utils.Auth import is_admin
+from utils.CommandSync import full_sync
 
 logger = logging.getLogger(__name__)
 
@@ -17,40 +23,40 @@ class Admin(commands.GroupCog, name="admin"):
             return False
         return True
 
-    @app_commands.command(name="sync", description="🔄 重新同步 Slash 指令（管理員專用）")
+    @app_commands.command(name="sync", description="🔄 重新同步 Slash 指令（僅限 Guild）")
     async def sync_cmd(self, interaction: discord.Interaction):
-        from utils.CommandSync import full_sync
+        await interaction.response.defer(ephemeral=True)
         await full_sync(self.bot)
-        await interaction.response.send_message("✅ 指令已重新同步完成（Guild + Global）", ephemeral=True)
+        await interaction.followup.send("✅ 指令已重新同步完成（Guild）", ephemeral=True)
 
-    @app_commands.command(name="inject_money", description="給自己加錢（測試用）")
-    @app_commands.describe(amount="要加多少美金？")
+    @app_commands.command(name="inject_money", description="💰 管理員加錢")
+    @app_commands.describe(amount="要加多少錢？")
     async def inject_money_cmd(self, interaction: discord.Interaction, amount: float):
-        player_id = str(interaction.user.id)
-        inject_money(player_id, amount)
-        logger.info(f"[ADMIN] {interaction.user.name} 注入 ${amount:.2f}")
-        await interaction.response.send_message(f"💵 成功注入 ${amount:.2f}！")
+        await interaction.response.defer(ephemeral=True)
+        if inject_money(str(interaction.user.id), amount):
+            await interaction.followup.send(f"✅ 成功加了 ${amount}", ephemeral=True)
+        else:
+            await interaction.followup.send("⚠️ 找不到玩家資料", ephemeral=True)
 
-    @app_commands.command(name="upgrade_all", description="升級所有項目到 Lv.5（測試用）")
-    async def upgrade_all_cmd(self, interaction: discord.Interaction):
-        player_id = str(interaction.user.id)
-        upgrade_all(player_id)
-        logger.info(f"[ADMIN] {interaction.user.name} 將所有升級提升至 Lv.5")
-        await interaction.response.send_message("📈 所有升級已提升至 Lv.5！")
+    @app_commands.command(name="reset", description="🗑️ 重設玩家資料")
+    @app_commands.describe(user="要重設的對象（預設為自己）")
+    async def reset_cmd(self, interaction: discord.Interaction, user: discord.User = None):
+        await interaction.response.defer(ephemeral=True)
+        target = user or interaction.user
+        reset_player(str(target.id))
+        await interaction.followup.send(f"🧹 {target.display_name} 的企業資料已重設", ephemeral=True)
 
-    @app_commands.command(name="reset", description="重設自己的企業資料（測試用）")
-    async def reset_cmd(self, interaction: discord.Interaction):
-        player_id = str(interaction.user.id)
-        reset_player(player_id)
-        logger.info(f"[ADMIN] {interaction.user.name} 重設企業資料")
-        await interaction.response.send_message("🗑️ 你的企業資料已重置。")
-
-    @app_commands.command(name="simulate_hour", description="模擬 1 小時排程收入（測試用）")
+    @app_commands.command(name="simulate_hour", description="⏱️ 模擬一小時收入")
     async def simulate_hour_cmd(self, interaction: discord.Interaction):
-        player_id = str(interaction.user.id)
-        reward = simulate_hourly_income(player_id)
-        logger.info(f"[ADMIN] {interaction.user.name} 模擬獲得 ${reward:.2f} 排程收入")
-        await interaction.response.send_message(f"⏱️ 模擬排程完成，獲得 ${reward:.2f}！")
+        await interaction.response.defer(ephemeral=True)
+        earned = simulate_hourly_income(str(interaction.user.id))
+        await interaction.followup.send(f"💵 獲得模擬收入：${earned:.2f}", ephemeral=True)
+
+    @app_commands.command(name="upgrade_all", description="📈 全部升級至 Lv.5")
+    async def upgrade_all_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        upgrade_all(str(interaction.user.id))
+        await interaction.followup.send("📊 所有項目已升級至 Lv.5", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))

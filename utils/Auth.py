@@ -1,14 +1,10 @@
 from config import ADMIN_IDS
-
-def is_admin(user_id: int) -> bool:
-    """
-    檢查使用者 ID 是否在管理員清單中。
-    """
-    return user_id in ADMIN_IDS
-
 import logging
 
 logger = logging.getLogger("MaiiBot")
+
+def is_admin(user_id: int) -> bool:
+    return user_id in ADMIN_IDS
 
 async def print_admins(bot):
     print("🔐 已載入管理員：")
